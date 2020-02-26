@@ -13,12 +13,13 @@ require("dotenv").config();
 
 let URL = "https://www.happycow.net/searchmap?s=3&location=";
 
-const fetchCitySearchData = async (link, city) => {
+const fetchCitySearchData = async (link, city, proxy) => {
+  console.log("Proxy utilisé = " + proxy);
+
   // Launch Puppeteer
-  // const browser = await puppeteer.launch({
-  //   args: ["--proxy-server=64.235.204.107:8080"]
-  // });
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: ["--proxy-server=" + proxy]
+  });
 
   // Launch a page
   const page = await browser.newPage();
@@ -82,7 +83,16 @@ const fetchCitySearchData = async (link, city) => {
               .getAttribute("data-phone"),
           thumbnail:
             elem.querySelector(".venue__img") &&
-            elem.querySelector(".venue__img").getAttribute("data-src")
+            elem.querySelector(".venue__img").getAttribute("data-src"),
+          type: elem.querySelector(".label").textContent,
+          category: Number(
+            elem
+              .querySelector(".thumbnail__details")
+              .getAttribute("data-category")
+          ),
+          rating:
+            elem.querySelectorAll(".venue__rating .fa-star").length +
+            elem.querySelectorAll(".venue__rating fa-star-half-o").length / 2
         };
       });
     });
@@ -108,15 +118,38 @@ const fetchCitySearchData = async (link, city) => {
 
 app.post("/add", async (req, res) => {
   try {
+    // Destructuring
+    const city = req.fields.city;
+    const proxy = req.fields.proxy;
+    const username = req.fields.username;
+    const password = req.fields.password;
+    const bdd = req.fields.bdd;
+
+    const uri =
+      "mongodb+srv://" +
+      username +
+      ":" +
+      password +
+      bdd +
+      ".gcp.mongodb.net/test?retryWrites=true&w=majority";
+
+    let message =
+      "Tous les restaurants de " +
+      city +
+      " ont bien été ajoutés à la BDD " +
+      bdd;
+
+    mongoose.connect(uri || "mongodb://localhost/scraping", {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      useCreateIndex: true
+    });
+
     console.log(req.fields.city);
     // Condition no username used
     if (!req.fields.city) {
       return res.json({ message: "Vous devez entrer le nom d'une ville" });
     }
-    // Destructuring
-    const city = req.fields.city;
-    let message =
-      "Tous les restaurants de " + city + " ont bien été ajoutés à la BDD";
 
     //Conditions
     const cityChecked = await City.findOne({ name: city });
@@ -133,7 +166,7 @@ app.post("/add", async (req, res) => {
       await newCity.save();
       const cityID = newCity.id;
 
-      const restaurants = await fetchCitySearchData(URL, city);
+      const restaurants = await fetchCitySearchData(URL, city, proxy);
 
       console.log("Push en BDD démarré :");
       console.log("");
@@ -167,12 +200,6 @@ app.post("/add", async (req, res) => {
     res.json({ message: error.message });
     console.error(error.message);
   }
-});
-
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/scraping", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  useCreateIndex: true
 });
 
 app.listen(process.env.PORT, () => {
