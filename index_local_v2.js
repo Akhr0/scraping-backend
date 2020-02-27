@@ -1,7 +1,91 @@
 const puppeteer = require("puppeteer");
 
+// Declaration of a the function which fetches datas from the Big Page of each restaurant \\\ New Puppetter
+const moreDetails = async link => {
+  console.log(link);
+  // Launch Puppeteer
+  const browser = await puppeteer.launch();
+
+  // Launch a page
+  const page = await browser.newPage();
+
+  // Go tu URL and wait it's loaded
+  await page.goto(link, { waitUntil: "networkidle2" });
+
+  const details = await page.evaluate(() => {
+    // Creation of all variables
+    let price;
+    let carousel;
+    let picturesArr;
+    let listPlaces;
+    let nearbyPlacesIds;
+    const priceLast =
+      document.querySelector(".label__list__body") &&
+      [...document.querySelectorAll(".label__list__body .price--fill")].pop();
+
+    const facebook = document.querySelector(
+      ".label__list__body .facebook--blue--def--color"
+    )
+      ? document
+          .querySelector(".label__list__body .facebook--blue--def--color")
+          .getAttribute("href")
+      : "";
+
+    const website = document.querySelector(".label__list__body .url")
+      ? document.querySelector(".label__list__body .url").getAttribute("href")
+      : "";
+
+    // If priceLast exist then price get title attribut, else title is null
+    price = priceLast ? priceLast.getAttribute("title") : "";
+
+    // If carousel exists then assign nodes'array, else assign empty array
+    document.querySelector(".carousel-inner")
+      ? (carousel = [
+          ...document.querySelectorAll(".carousel-inner .panel__figure")
+        ])
+      : (carousel = []);
+
+    // If carousel as some element then map on it to push images in picturesArr, else pitcturesArr is an empty array
+    if (carousel.length) {
+      picturesArr = carousel.map(pic => {
+        return pic.querySelector("a").getAttribute("href");
+      });
+    } else {
+      picturesArr = [];
+    }
+
+    // If list exists then assign nodes'array, else assign empty array
+    document.querySelector(".list__with__bg__item")
+      ? (listPlaces = [
+          ...document.querySelectorAll(".list__with__bg__item h4 a")
+        ])
+      : (listPlaces = []);
+
+    // If listPlaces as some element then map on it to push id in nearbyPlacesIds, else nearbyPlacesIds is an empty array
+    if (listPlaces.length) {
+      nearbyPlacesIds = listPlaces.map(id => {
+        return id
+          .getAttribute("href")
+          .split("-")
+          .reverse()[0];
+      });
+    } else {
+      nearbyPlacesIds = [];
+    }
+
+    return {
+      pictures: picturesArr,
+      price,
+      website,
+      facebook,
+      nearbyPlacesIds
+    };
+  });
+  return details;
+};
+
 //////////// FETCH FUNCTION EXTRACTED FROM MY BACK TO TEST IT \\\\\\\\\\\\\\
-const fetchCitySearchData = async (link, city, proxy) => {
+const fetchCitySearchData = async (link, city, proxy, func) => {
   console.log("Proxy utilisé = " + proxy);
 
   // Launch Puppeteer
@@ -48,78 +132,6 @@ const fetchCitySearchData = async (link, city, proxy) => {
 
       // For each Restaurant we fetch his datas and return the result in the const "restaurants"
       return listObj.map(elem => {
-        // Declaration of a the function which fetches datas from the Big Page of each restaurant \\\ New Puppetter
-        const moreDetails = async link => {
-          // Launch Puppeteer
-          const browser = await puppeteer.launch();
-
-          // Launch a page
-          const page = await browser.newPage();
-
-          // Go tu URL and wait it's loaded
-          await page.goto(link, { waitUntil: "networkidle2" });
-
-          const details = await page.evaluate(() => {
-            const carousel = document.querySelector(".carousel-inner");
-            if (carousel) {
-              const picturesArr = carousel.map(pic => {
-                return pic
-                  .querySelector(".panel__figure a")
-                  .getAttribute("href");
-              });
-            } else {
-              const picturesArr = [];
-            }
-
-            const price =
-              document.querySelector(".label__list__body") &&
-              document
-                .querySelectorAll(".label__list__body .price--fill")
-                .pop()
-                .getAttribute("title");
-            const website =
-              document.querySelector(".label__list__body .url") &&
-              document
-                .querySelector(".label__list__body .url")
-                .getAttribute("href");
-            const facebook =
-              document.querySelector(
-                ".label__list__body .facebook--blue--def--color"
-              ) &&
-              document
-                .querySelector(".label__list__body .facebook--blue--def--color")
-                .getAttribute("href");
-            const nearbyPlacesIdsArr = document.querySelectorAll(
-              ".list__with__bg__item h4 a"
-            );
-            if (nearbyPlacesIdsArr) {
-              const nearbyPlacesIds = nearbyPlacesIdsArr.map(id => {
-                return id
-                  .getAttribute("href")
-                  .split("-")
-                  .reverse()[0];
-              });
-            }
-
-            return {
-              pictures: picturesArr,
-              price,
-              website,
-              facebook,
-              nearbyPlacesIds
-            };
-          });
-          return details;
-        };
-
-        // Creation of an Object ? i'm not sure yet but i think so. It calls the previous function with the Big Page's link of each restaurant
-        // I have to put an await before moreDetails but it seems my .map function can't be an async function or it will return an object with null values
-        // I have to find a solution with promise or promise.all but i wait for Farid help
-        const detailsCard = moreDetails(
-          "https://www.happycow.net" +
-            elem.querySelector(".thumbnail__link").getAttribute("href")
-        );
-
         // Return an Object with all fetched datas which be a part of "restaurants" Array
         return {
           placeId: elem
@@ -175,12 +187,7 @@ const fetchCitySearchData = async (link, city, proxy) => {
           link:
             elem.querySelector(".thumbnail__link") &&
             "https://www.happycow.net" +
-              elem.querySelector(".thumbnail__link").getAttribute("href"),
-          pictures: detailsCard.pictures,
-          price: detailsCard.price,
-          website: detailsCard.website,
-          facebook: detailsCard.facebook,
-          nearbyPlacesIds: detailsCard.nearbyPlacesIds
+              elem.querySelector(".thumbnail__link").getAttribute("href")
         };
       });
     });
@@ -201,7 +208,13 @@ const fetchCitySearchData = async (link, city, proxy) => {
   console.log(
     "Elle possède " + fullList.length + " éléments pour la ville de " + city
   );
-  console.log(fullList);
+
+  for (let i = 0; i < fullList.length; i++) {
+    const moreDatas = await func(fullList[i].link);
+    console.log(moreDatas);
+  }
+
+  // console.log(fullList);
   await browser.close();
 };
 
@@ -209,5 +222,6 @@ const fetchCitySearchData = async (link, city, proxy) => {
 fetchCitySearchData(
   "https://www.happycow.net/searchmap?s=3&location=",
   "oslo",
-  "5.44.107.147:3128"
+  "5.44.107.147:3128",
+  moreDetails
 );
