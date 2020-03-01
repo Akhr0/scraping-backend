@@ -6,9 +6,7 @@ const City = mongoose.model("City", {
     required: true,
     unique: true
   },
-  country: {
-    type: String
-  }
+  location: String
 });
 
 module.exports = City;
