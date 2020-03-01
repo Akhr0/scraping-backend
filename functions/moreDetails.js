@@ -4,7 +4,7 @@ const puppeteer = require("puppeteer");
 const moreDetails = async link => {
   // Launch Puppeteer
   const browserBis = await puppeteer.launch({
-    ignoreDefaultArgs: ["--disable-extensions"]
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
   });
 
   // Launch a page

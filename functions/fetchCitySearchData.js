@@ -4,7 +4,7 @@ const puppeteer = require("puppeteer");
 const fetchCitySearchData = async (link, city, func, max) => {
   // Launch Puppeteer
   const browser = await puppeteer.launch({
-    ignoreDefaultArgs: ["--disable-extensions"]
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
   });
 
   // Launch a page
