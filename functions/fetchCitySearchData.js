@@ -3,7 +3,9 @@ const puppeteer = require("puppeteer");
 //////////// FETCH FUNCTION EXTRACTED FROM MY BACK TO TEST IT \\\\\\\\\\\\\\
 const fetchCitySearchData = async (link, city, func, max) => {
   // Launch Puppeteer
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    ignoreDefaultArgs: ["--disable-extensions"]
+  });
 
   // Launch a page
   const page = await browser.newPage();

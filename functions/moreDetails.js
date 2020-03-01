@@ -3,7 +3,9 @@ const puppeteer = require("puppeteer");
 // Declaration of a the function which fetches datas from the Big Page of each restaurant \\\ New Puppetter
 const moreDetails = async link => {
   // Launch Puppeteer
-  const browserBis = await puppeteer.launch();
+  const browserBis = await puppeteer.launch({
+    ignoreDefaultArgs: ["--disable-extensions"]
+  });
 
   // Launch a page
   const pageBis = await browserBis.newPage();
